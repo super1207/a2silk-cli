@@ -1,0 +1,113 @@
+name: Build Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: 'Log level'
+        required: true
+        default: 'warning'
+
+jobs:
+  test:
+    name: build project
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          # Linux x86_64
+          - os: ubuntu-latest
+
+          # Windows
+          - os: windows-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@master
+
+    - name: install_ubuntu_dependencies
+      if: startsWith(matrix.os, 'ubuntu-') 
+      run: |
+        cargo install cross --git https://github.com/cross-rs/cross
+
+    - name: build_ubuntu
+      if: startsWith(matrix.os, 'ubuntu-') 
+      run: |
+        CROSS_NO_WARNINGS=0 cross build --target i686-unknown-linux-musl --release
+        CROSS_NO_WARNINGS=0 cross build --target x86_64-unknown-linux-musl --release
+        CROSS_NO_WARNINGS=0 cross build --target aarch64-linux-android --release
+        CROSS_NO_WARNINGS=0 cross build --target aarch64-unknown-linux-musl --release
+
+    - name: build_windows
+      if: startsWith(matrix.os, 'windows-') 
+      run: |
+        $ENV:RUSTFLAGS='-C target-feature=+crt-static'
+        rustup target add i686-pc-windows-msvc
+        rustup target add x86_64-pc-windows-msvc
+        cargo build --release --target i686-pc-windows-msvc
+        cargo build --release --target x86_64-pc-windows-msvc
+      shell: pwsh
+        
+    - name: before_ubuntu_upload
+      if: startsWith(matrix.os, 'ubuntu-') 
+      run: |
+        mkdir Release
+        cp target/x86_64-unknown-linux-musl/release/a2silk-cli Release/a2silk-cli_linux_x86_64
+        cp target/aarch64-linux-android/release/a2silk-cli Release/a2silk-cli_android_aarch64
+        cp target/aarch64-unknown-linux-musl/release/a2silk-cli Release/a2silk-cli_linux_aarch64
+        cp target/i686-unknown-linux-musl/release/a2silk-cli Release/a2silk-cli_linux_i686
+
+    - name: before_windows_upload
+      if: startsWith(matrix.os, 'windows-') 
+      run: |
+        mkdir Release
+        cp target/i686-pc-windows-msvc/release/a2silk-cli.exe Release/a2silk-cli_windows_i686.exe
+        cp target/x86_64-pc-windows-msvc/release/a2silk-cli.exe Release/a2silk-cli_windows_x86_64.exe
+      shell: pwsh
+
+    - name: upload file1
+      if: startsWith(matrix.os, 'windows-') 
+      uses: actions/upload-artifact@v3
+      with:
+        name: a2silk-cli_windows_i686.exe
+        path: 
+            Release/a2silk-cli_windows_i686.exe
+
+    - name: upload file2
+      if: startsWith(matrix.os, 'windows-') 
+      uses: actions/upload-artifact@v3
+      with:
+        name: a2silk-cli_windows_x86_64.exe
+        path: 
+            Release/a2silk-cli_windows_x86_64.exe
+
+    - name: upload file3
+      if: startsWith(matrix.os, 'ubuntu-') 
+      uses: actions/upload-artifact@v3
+      with:
+        name: a2silk-cli_linux_aarch64
+        path: 
+            Release/a2silk-cli_linux_aarch64
+
+    - name: upload file4
+      if: startsWith(matrix.os, 'ubuntu-') 
+      uses: actions/upload-artifact@v3
+      with:
+        name: a2silk-cli_linux_i686
+        path: 
+          Release/a2silk-cli_linux_i686
+
+    - name: upload file5
+      if: startsWith(matrix.os, 'ubuntu-') 
+      uses: actions/upload-artifact@v3
+      with:
+        name: a2silk-cli_android_aarch64
+        path: 
+          Release/a2silk-cli_android_aarch64
+          
+    - name: upload file6
+      if: startsWith(matrix.os, 'ubuntu-') 
+      uses: actions/upload-artifact@v3
+      with:
+        name: a2silk-cli_linux_x86_64
+        path: 
+          Release/a2silk-cli_linux_x86_64
